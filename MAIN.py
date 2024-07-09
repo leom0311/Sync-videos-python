@@ -3,13 +3,17 @@ from tkinter import ttk
 from tkinter import filedialog
 import cv2
 from PIL import Image, ImageTk
+from ultralytics import YOLO
 import numpy as np
 
 class DualVideoPlayer:
-    def __init__(self, root, width, height):
+    def __init__(self, root, width, height, model_path):
         self.root = root
         self.width = width
         self.height = height
+
+        # Load the YOLOv8 model
+        self.model = YOLO(model_path)
 
         # Ratine video
         self.ratine_label = ttk.Label(root)
@@ -46,12 +50,31 @@ class DualVideoPlayer:
         if self.webcam_cap.isOpened():
             self.webcam_cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
+    def detect_objects(self, frame):
+        # Perform inference
+        results = self.model(frame)
+        return results
+
+    def draw_predictions(self, frame, results):
+        # Draw bounding boxes and labels on the frame
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                label = box.cls.item()  # Convert tensor to standard Python data type
+                confidence = box.conf.item()  # Convert tensor to standard Python data type
+                if confidence > 0.5:  # Only draw boxes with a confidence above 0.5
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    label_text = f"{label}: {confidence:.2f}"
+                    cv2.putText(frame, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        return frame
+
     def update_frames(self):
         if self.ratine_playing and self.ratine_cap:
             ret, frame = self.ratine_cap.read()
             if ret:
+                results = self.detect_objects(frame)
+                frame = self.draw_predictions(frame, results)
                 frame = cv2.resize(frame, (self.width, self.height))
-                frame = cv2.flip(frame, 1)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 img = Image.fromarray(frame)
                 imgtk = ImageTk.PhotoImage(image=img)
@@ -63,6 +86,7 @@ class DualVideoPlayer:
         if self.webcam_playing and self.webcam_cap:
             ret, frame = self.webcam_cap.read()
             if ret:
+                frame = cv2.flip(frame, 1)  # Flip around y-axis
                 frame = cv2.resize(frame, (self.width, self.height))
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 img = Image.fromarray(frame)
@@ -99,14 +123,15 @@ def load_webcam_video(player, start_frame_entry):
     start_frame = int(start_frame_entry.get())
     if file_path:
         player.load_webcam_video(file_path, start_frame)
-
 def main():
     root = tk.Tk()
     root.title("Dual Video Player")
 
     width, height = 640, 320  # Desired size of video display area
 
-    player = DualVideoPlayer(root, width, height)
+    model_path = "C:\\Users\\Administrator\\Videos\\yolo\\sync\\Sync-videos-python\\retina.pt"  # Path to your .pt file
+
+    player = DualVideoPlayer(root, width, height, model_path)
 
     # Ratine controls
     ratine_frame = ttk.Frame(root)
