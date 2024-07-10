@@ -37,7 +37,6 @@ class DualVideoPlayer:
         self.webcam_label.imgtk = black_frame_imgtk
         self.webcam_label.configure(image=black_frame_imgtk)
 
-
     def load_ratine_video(self, file_path, start_frame=0):
         self.ratine_cap = cv2.VideoCapture(file_path)
         self.ratine_start_frame = start_frame
@@ -64,8 +63,8 @@ class DualVideoPlayer:
                 confidence = box.conf.item()  # Convert tensor to standard Python data type
                 if confidence > 0.5:  # Only draw boxes with a confidence above 0.5
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    label_text = f"{label}: {confidence:.2f}"
-                    cv2.putText(frame, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    # label_text = f"{label}: {confidence:.2f}"
+                    # cv2.putText(frame, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         return frame
 
     def update_frames(self):
@@ -76,6 +75,13 @@ class DualVideoPlayer:
                 frame = self.draw_predictions(frame, results)
                 frame = cv2.resize(frame, (self.width, self.height))
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                # draw text
+                current_frame = int(self.ratine_cap.get(cv2.CAP_PROP_POS_FRAMES))
+                total_frames = int(self.ratine_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                info_text = f"Frame: {current_frame}/{total_frames}"
+                cv2.putText(frame, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
                 img = Image.fromarray(frame)
                 imgtk = ImageTk.PhotoImage(image=img)
                 self.ratine_label.imgtk = imgtk
@@ -89,6 +95,13 @@ class DualVideoPlayer:
                 frame = cv2.flip(frame, 1)  # Flip around y-axis
                 frame = cv2.resize(frame, (self.width, self.height))
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                
+                # draw text
+                current_frame = int(self.webcam_cap.get(cv2.CAP_PROP_POS_FRAMES))
+                total_frames = int(self.webcam_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                info_text = f"Frame: {current_frame}/{total_frames}"
+                cv2.putText(frame, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
                 img = Image.fromarray(frame)
                 imgtk = ImageTk.PhotoImage(image=img)
                 self.webcam_label.imgtk = imgtk
@@ -96,7 +109,7 @@ class DualVideoPlayer:
             else:
                 self.webcam_cap.set(cv2.CAP_PROP_POS_FRAMES, self.webcam_start_frame)
 
-        self.root.after(20, self.update_frames)
+        self.root.after(10, self.update_frames)
 
     def play(self):
         self.ratine_playing = True
@@ -129,7 +142,7 @@ def main():
 
     width, height = 640, 320  # Desired size of video display area
 
-    model_path = "C:\\Users\\Administrator\\Videos\\yolo\\sync\\Sync-videos-python\\retina.pt"  # Path to your .pt file
+    model_path = "retina.pt"  # Path to your .pt file
 
     player = DualVideoPlayer(root, width, height, model_path)
 
